@@ -8,8 +8,9 @@ function formatDate(ts) {
   return new Date(ts).toLocaleString();
 }
 
-// Show all chips in a Bootstrap product-like card grid
+// --- Show all chips ---
 function showChips() {
+  location.hash = 'chips';
   selectedChip = null;
   selectedSession = null;
 
@@ -27,16 +28,14 @@ function showChips() {
     const card = document.createElement('div');
     card.className = "card h-100 cursor-pointer shadow-sm";
 
-   card.innerHTML = `
-  <img src="icon.png" alt="Chip Icon" class="card-img-top mb-2" style="object-fit: contain; height: 180px; padding: 5px;" />
-
-  <div class="card-body d-flex flex-column">
-    <h5 class="card-title">${device.id}</h5>
-    <p class="card-text mb-2">Sessions: <strong>${device.sessions.length}</strong></p>
-    <p class="card-text text-muted small mt-auto">Created at: ${formatDate(device.createdAt)}</p>
-  </div>
-`;
-
+    card.innerHTML = `
+      <img src="icon.png" alt="Chip Icon" class="card-img-top mb-2" style="object-fit: contain; height: 180px; padding: 5px;" />
+      <div class="card-body d-flex flex-column">
+        <h5 class="card-title">${device.id}</h5>
+        <p class="card-text mb-2">Sessions: <strong>${device.sessions.length}</strong></p>
+        <p class="card-text text-muted small mt-auto">Created at: ${formatDate(device.createdAt)}</p>
+      </div>
+    `;
 
     card.addEventListener('click', () => {
       selectedChip = device;
@@ -48,8 +47,9 @@ function showChips() {
   });
 }
 
-// Show sessions list for a chip, styled similarly to product list but simpler
+// --- Show sessions list for a chip ---
 function showSessions(chip) {
+  location.hash = `chip=${encodeURIComponent(chip.id)}`;
   selectedSession = null;
 
   app.innerHTML = `
@@ -88,8 +88,10 @@ function showSessions(chip) {
   });
 }
 
-// Show data for a session with valid and invalid chunks in tables
+// --- Show data for a session ---
 function showSessionData(chipId, session) {
+  location.hash = `chip=${encodeURIComponent(chipId)}&session=${encodeURIComponent(session["session id"])}`;
+
   app.innerHTML = `
     <button type="button" class="btn btn-link mb-3 px-0">&larr; Back to Sessions</button>
     <h3 class="mb-4">Data for Chip: ${chipId} | Session: ${session["session id"]}</h3>
@@ -149,18 +151,64 @@ function showSessionData(chipId, session) {
   app.appendChild(createTable(session.dataset.invalid, 'Invalid Chunks', 'bg-danger'));
 }
 
-async function fetchData() {
+// --- Load UI based on current URL hash ---
+function loadFromHash() {
+  const hash = location.hash.substring(1); // remove #
+  if (!hash || hash === 'chips') {
+    showChips();
+    return;
+  }
+
+  const params = new URLSearchParams(hash);
+  const chipId = params.get('chip');
+  const sessionId = params.get('session');
+
+  if (chipId) {
+    const chip = data.data.find(c => c.id === chipId);
+    if (!chip) {
+      showChips();
+      return;
+    }
+    selectedChip = chip;
+
+    if (sessionId) {
+      const session = chip.sessions.find(s => s["session id"] === sessionId);
+      if (!session) {
+        showSessions(chip);
+        return;
+      }
+      selectedSession = session;
+      showSessionData(chipId, session);
+    } else {
+      showSessions(chip);
+    }
+  } else {
+    showChips();
+  }
+}
+
+// --- Fetch data and update UI ---
+async function fetchDataAndUpdate() {
   try {
     const res = await fetch('https://pi-server-j62a.onrender.com/sessions');
     if (!res.ok) throw new Error('Network error');
-    data = await res.json();
+    const newData = await res.json();
 
-    if (data.status !== 'ok') throw new Error('API status not ok');
+    if (newData.status !== 'ok') throw new Error('API status not ok');
+    data = newData;
 
-    showChips();
+    loadFromHash(); // load UI state based on URL hash
   } catch (err) {
     app.innerHTML = `<div class="alert alert-danger" role="alert">Failed to load data: ${err.message}</div>`;
   }
 }
 
-fetchData();
+// --- Listen for URL hash changes ---
+window.addEventListener('hashchange', () => {
+  if (!data) return; // ignore if data not loaded
+  loadFromHash();
+});
+
+// Initial load + refresh every 5 seconds
+fetchDataAndUpdate();
+setInterval(fetchDataAndUpdate, 5000);

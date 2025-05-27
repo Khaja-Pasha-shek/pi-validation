@@ -1,0 +1,14 @@
+code {
+  font-family: monospace;
+  word-break: break-word;
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.card:hover {
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+  transform: translateY(-4px);
+  transition: all 0.2s ease-in-out;
+}

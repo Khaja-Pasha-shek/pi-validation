@@ -151,7 +151,7 @@ function showSessionData(chipId, session) {
 
 async function fetchData() {
   try {
-    const res = await fetch('http://localhost:3000/sessions');
+    const res = await fetch('https://pi-server-j62a.onrender.com/sessions');
     if (!res.ok) throw new Error('Network error');
     data = await res.json();
 
